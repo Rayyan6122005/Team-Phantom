@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARTEMIS // BORDER_WATCH_V4</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap');
+
+        :root {
+            --neon-green: #00ff9f;
+            --neon-purple: #bc13fe;
+            --neon-red: #ff3131;
+            --bg-black: #050505;
+            --glass: rgba(0, 255, 159, 0.03);
+            --border: rgba(0, 255, 159, 0.3);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background-color: var(--bg-black);
+            color: var(--neon-green);
+            font-family: 'Share Tech Mono', monospace;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* --- CRT SCANLINE OVERLAY --- */
+        body::before {
+            content: " ";
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 999;
+            background-size: 100% 4px, 3px 100%;
+            pointer-events: none;
+        }
+
+        /* --- RED ALERT GLITCH --- */
+        body.threat-active {
+            background-color: #120000;
+            animation: jitter 0.1s infinite;
+        }
+
+        @keyframes jitter {
+            0% { transform: translate(0,0); }
+            50% { transform: translate(1px, -1px); }
+            100% { transform: translate(-1px, 1px); }
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 40px;
+            border-bottom: 2px solid var(--border);
+            text-shadow: 2px 0 var(--neon-purple);
+        }
+
+        .branding h1 { font-family: 'VT323', monospace; font-size: 2.2rem; letter-spacing: 4px; }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 350px 1fr 350px;
+            grid-template-rows: 400px 1fr;
+            gap: 20px;
+            padding: 20px;
+            height: calc(100vh - 80px);
+        }
+
+        .panel {
+            border: 1px solid var(--border);
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            position: relative;
+            padding: 15px;
+            box-shadow: inset 0 0 15px rgba(0, 255, 159, 0.1);
+        }
+
+        .panel-header {
+            font-size: 0.7rem;
+            color: var(--neon-purple);
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* --- THERMAL HUMAN --- */
+        #thermal-box { display: flex; flex-direction: column; align-items: center; }
+        .human-container { width: 150px; position: relative; margin-top: 20px; }
+        #human-svg { fill: var(--neon-green); transition: 0.3s; filter: drop-shadow(0 0 5px var(--neon-green)); }
+        
+        .threat-active #human-svg {
+            fill: var(--neon-red) !important;
+            filter: drop-shadow(0 0 15px var(--neon-red));
+        }
+
+        /* --- RADAR --- */
+        .radar-box {
+            grid-column: 2;
+            grid-row: 1 / 3;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas#radarCanvas { filter: drop-shadow(0 0 20px var(--neon-green)); }
+
+        /* --- SENSORS & DATA --- */
+        .data-stream { font-family: 'VT323', monospace; font-size: 1.1rem; line-height: 1.4; }
+        .value { color: #fff; text-shadow: 0 0 5px var(--neon-green); }
+        .alert-txt { color: var(--neon-red); font-weight: bold; display: none; }
+
+        /* --- WEBCAM --- */
+        #video-feed {
+            width: 100%; height: 200px; object-fit: cover;
+            border: 1px solid var(--neon-green);
+            filter: sepia(100%) hue-rotate(90deg) brightness(1.2) contrast(1.2);
+        }
+        .threat-active #video-feed { filter: sepia(100%) hue-rotate(-50deg) saturate(5); }
+
+        /* --- LOGS --- */
+        #capture-log {
+            display: flex; flex-direction: column; gap: 10px; overflow-y: auto; height: 300px;
+        }
+        .log-entry { border: 1px solid var(--border); padding: 5px; font-size: 0.7rem; }
+        .log-entry img { width: 100%; margin-top: 5px; }
+
+        /* --- SCROLLBAR --- */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--neon-green); }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="branding">
+        <h1>PROJECT ARTEMIS</h1>
+        <p style="font-size: 0.7rem; opacity: 0.7;">AUTONOMOUS RADAR & THERMAL ENGINE FOR MONITORING ILLEGAL SMUGGLING</p>
+    </div>
+    <div class="sys-data">
+        <div id="timestamp">2026-04-25 // 08:32:23</div>
+        <div id="loc">NAGAVARA_SECTOR // 13.0410° N</div>
+    </div>
+</header>
+
+<div class="dashboard">
+    <div class="panel" id="thermal-box">
+        <div class="panel-header">BIO_SCANNER // THERMAL_DYNAMICS</div>
+        <div class="human-container">
+            <svg id="human-svg" viewBox="0 0 100 200">
+                <path d="M50,15 C55,15 60,20 60,25 C60,30 55,35 50,35 C45,35 40,30 40,25 C40,20 45,15 50,15 M35,40 L65,40 L70,80 L60,130 L60,195 L52,195 L52,130 L48,130 L48,195 L40,195 L40,130 L30,80 Z" />
+            </svg>
+        </div>
+        <div class="data-stream" style="margin-top: 20px; width: 100%;">
+            STATUS: <span id="bio-status" class="value">STABLE</span><br>
+            TGT_TEMP: <span id="bio-temp" class="value">36.6</span>°C<br>
+            HEART_RATE: <span id="bio-pulse" class="value">72</span> BPM
+        </div>
+    </div>
+
+    <div class="panel radar-box">
+        <div class="panel-header">SENTRY_RADAR // 180_SWEEP_ARRAY</div>
+        <div id="big-alert" class="alert-txt" style="font-size: 2rem; margin-bottom: 20px;">!!! SMUGGLING INCURSION !!!</div>
+        <canvas id="radarCanvas" width="800" height="400"></canvas>
+        <div class="data-stream" style="display: flex; gap: 40px; margin-top: 20px;">
+            <div>ULTRASONIC_DIST: <span id="ultra-dist" class="value">0.00</span> cm</div>
+            <div>AZIMUTH: <span id="azi" class="value">0</span>°</div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">OPTIC_LINK // NAGAVARA_01</div>
+        <video id="video-feed" autoplay playsinline muted></video>
+        <div class="panel-header" style="margin-top:20px;">THREAT_LOG // EVIDENCE_DB</div>
+        <div id="capture-log"></div>
+    </div>
+</div>
+
+<canvas id="hidden-canvas" style="display:none;"></canvas>
+
+<script>
+    const canvas = document.getElementById('radarCanvas');
+    const ctx = canvas.getContext('2d');
+    const video = document.getElementById('video-feed');
+    const ultraDist = document.getElementById('ultra-dist');
+    const humanSvg = document.getElementById('human-svg');
+    const bigAlert = document.getElementById('big-alert');
+
+    let sweepAngle = Math.PI;
+    let sweepDir = -0.012;
+    let isActive = false;
+    let mouse = { x: -1000, y: -1000 };
+    let photoInterval = null;
+
+    // --- WEBCAM INIT ---
+    navigator.mediaDevices.getUserMedia({ video: true }).then(s => video.srcObject = s);
+
+    // --- ULTRASONIC SIMULATION ---
+    // Mapping 0-320px radius to 0-400cm distance
+    function calculateSimulatedDistance(distPixels) {
+        return ((distPixels / 320) * 400).toFixed(2);
+    }
+
+    // --- RADAR LOOP ---
+    function draw() {
+        // Trail effect
+        ctx.fillStyle = 'rgba(5, 5, 5, 0.2)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const cx = canvas.width / 2;
+        const cy = canvas.height - 20;
+        const radius = 350;
+
+        // Draw Grid
+        ctx.strokeStyle = isActive ? 'rgba(255, 49, 49, 0.3)' : 'rgba(0, 255, 159, 0.2)';
+        ctx.lineWidth = 1;
+        for(let i=1; i<=5; i++) {
+            ctx.beginPath();
+            ctx.arc(cx, cy, (radius/5)*i, Math.PI, 0);
+            ctx.stroke();
+        }
+
+        // Sweep Line
+        ctx.strokeStyle = isActive ? varColor('--neon-red') : varColor('--neon-green');
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(sweepAngle)*radius, cy - Math.sin(sweepAngle)*radius);
+        ctx.stroke();
+
+        // Target Logic
+        const dx = mouse.x - cx;
+        const dy = cy - mouse.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const angle = Math.atan2(dy, dx);
+
+        if (dist < radius && angle > 0 && angle < Math.PI) {
+            // Check if sweep line is passing over cursor
+            if (Math.abs(sweepAngle - angle) < 0.08) {
+                triggerIncursion(dist, angle);
+            }
+            
+            // Draw Target Ping
+            ctx.strokeStyle = '#fff';
+            ctx.strokeRect(mouse.x - 10, mouse.y - 10, 20, 20);
+            ultraDist.innerText = calculateSimulatedDistance(dist);
+            document.getElementById('azi').innerText = Math.round(angle * (180/Math.PI));
+        }
+
+        sweepAngle += sweepDir;
+        if (sweepAngle <= 0 || sweepAngle >= Math.PI) sweepDir *= -1;
+
+        requestAnimationFrame(draw);
+    }
+
+    function triggerIncursion(d, a) {
+        if (isActive) return;
+        isActive = true;
+        document.body.classList.add('threat-active');
+        bigAlert.style.display = 'block';
+        
+        // Update Bio
+        document.getElementById('bio-status').innerText = "ANOMALY_DETECTED";
+        document.getElementById('bio-temp').innerText = "39.4";
+        document.getElementById('bio-temp').style.color = "var(--neon-red)";
+        document.getElementById('bio-pulse').innerText = "128";
+
+        // Evidence Capture
+        captureEvidence();
+        photoInterval = setInterval(captureEvidence, 2000);
+
+        // Auto-Reset after 5 seconds of no contact
+        setTimeout(() => {
+            if (isActive) resetSystem();
+        }, 5000);
+    }
+
+    function resetSystem() {
+        isActive = false;
+        document.body.classList.remove('threat-active');
+        bigAlert.style.display = 'none';
+        document.getElementById('bio-status').innerText = "STABLE";
+        document.getElementById('bio-temp').innerText = "36.6";
+        document.getElementById('bio-temp').style.color = "white";
+        document.getElementById('bio-pulse').innerText = "72";
+        clearInterval(photoInterval);
+    }
+
+    function captureEvidence() {
+        const snapCanvas = document.getElementById('hidden-canvas');
+        const sctx = snapCanvas.getContext('2d');
+        snapCanvas.width = video.videoWidth;
+        snapCanvas.height = video.videoHeight;
+        sctx.drawImage(video, 0, 0);
+
+        const div = document.createElement('div');
+        div.className = 'log-entry';
+        div.innerHTML = `ID: SMGL-0${Math.floor(Math.random()*999)} // ${new Date().toLocaleTimeString()}`;
+        const img = new Image();
+        img.src = snapCanvas.toDataURL('image/webp');
+        div.appendChild(img);
+        
+        const log = document.getElementById('capture-log');
+        log.prepend(div);
+    }
+
+    function varColor(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    window.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = e.clientX - rect.left;
+        mouse.y = e.clientY - rect.top;
+    });
+
+    draw();
+
+    // Set clock
+    setInterval(() => {
+        document.getElementById('timestamp').innerText = new Date().toISOString().replace('T', ' // ').split('.')[0];
+    }, 1000);
+</script>
+</body>
+</html>
